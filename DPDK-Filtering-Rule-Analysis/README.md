@@ -136,6 +136,16 @@ Each `tap_trigger_cb` means a frame is received  from NIC (tap driver) causing `
 
 <br>
 
+## Flow Rule Impact
+
+Without flow rules set on testpmd, Events captured decreases by 24.2% (other settings as the same). Average standard deviation is 2.1 microseconds while average runtime of functions is 1.2 microseconds, proving less CPU cycle intensity as expected. 
+
+> ▸ _Hot code paths are remaining the same with their almost previous ratio except for `pmd_rx_burst` with 73.8%. `tap_trigger_cb` is called 4291 times totally (refer to Descriptive Statistics) and 4100 times (refer to Weighted Tree Viewer new Callstack) is happened on 4 other threads of dpdk (testpmd, intr, mp-msg, telemet), meaning 4.4% of tap triggers happened in dpdk-worker which needs less context switches._
+
+---
+
+<br>
+
 ## Challenges and Solutions
 
 ### 1. Missing Meson Module
