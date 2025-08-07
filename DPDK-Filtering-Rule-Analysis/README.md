@@ -120,6 +120,8 @@ Each `tap_trigger_cb` means a frame is received  from NIC (tap driver) causing `
 
 > ▸ _Processing 8 packets took 176.3 microseconds (12 nanoseconds of wasted time between `pkt_burst_io_forward` calls is negligible) concluding application is capable of receiving and sending 5672 packets per second. Assuming mtu is set to 1500 as default the maximum forwarding would be 8.5 gigabyte per second. VPP makes great difference becuase of linear rate packet processing (larger packets mean higher throughput)._
 
+---
+
 ![image11](Pics/image11.png)
 
 <br>
