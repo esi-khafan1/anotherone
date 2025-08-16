@@ -55,6 +55,131 @@ sudo reboot
 
 `sudo update-grub` updates the grub bootloader configuration file and regenarates `/boot/grub/grub.cfg` file. Changes will finally take place after `sudo reboot` that can be assured by `dmesg | grep isolcpus`.
 
+
+
+## 1. Installation and Build of DPDK
+
+1. **Download the latest version from [the official website](https://core.dpdk.org/download/)**
+
+<br>
+
+ 2. **Extract the Downloaded Archive**
+
+    ```shell
+    tar xJf dpdk-<version>.tar.xz
+    cd dpdk-<version>
+    ```
+
+    <br>
+
+ 3. **Use Meson for Configuration of Build Environment**
+
+    ```shell
+    meson setup build \
+    -Dexamples=all \
+    -Dlibdir=lib \
+    -Denable_trace_fp=true \
+    -Dc_args="-finstrument-functions"
+    ```
+
+    <br>
+
+ 4. **Use Ninja for Build and Install**
+
+    ```shell
+    cd build
+    ninja
+    sudo meson install
+    sudo ldconfig
+    ```
+
+     
+
+    <br>
+
+    You can validate the successful install by looking for compiled binaries in the /build/app directory.
+
+    <br>
+
+​		
+
+## 2. Configure Hugepages
+
+HugePages were allocated to provide large, contiguous memory pages for DPDK. A total of 1024 HugePages (2 GB) were configured.
+
+```shell
+sudo sysctl -w vm.nr_hugepages=1024
+mount -t hugetlbfs none /dev/hugepages
+```
+
+> Note: With each system reboot you will need to configure Hugepages again, so it is recommended to make a bash file for this purpose.
+
+<br>
+
+## 3. Create two TAP interfaces for DPDK's TAP Poll Mode Driver (PMD)
+
+Within the dpdk-<version>/build directory, execute the testpmd application using the following command:
+
+```shell
+sudo LD_PRELOAD=/usr/lib/x86_64-linux-gnu/liblttng-ust-cyg-profile.so.1 ./app/dpdk-testpmd -l 0-1 -n 2   --vdev=net_tap0,iface=tap0   --vdev=net_tap1,iface=tap1   --   -i
+```
+
+Command breakdown:
+
+- `LD_PRELOAD=/usr/lib/x86_64-linux-gnu/liblttng-ust-cyg-profile.so.1`:
+  forces the DPDK application to load LTTng's function tracing library first, enabling detailed profiling of function calls for performance analysis. This allows tracking exact timing and frequency of every function call in DPDK (like packet processing functions) to identify bottlenecks.
+- `-l 0-1`:  Assigns 2 cores
+- `-n 2   --vdev=net_tap0,iface=tap0   --vdev=net_tap1,iface=tap1`: 
+  Creates 2 virtual devices named net_tap0 and net_tap1 with interfaces tap0 and tap1
+- `-i`: Starts in interactive mode
+
+You may run into some issues after running the code above depending on your kernel version because `liblttng-ust-cyg-profile.so.1` file my not be present. To determine which version is compatible with your system run the following command:
+
+```shell
+ls /usr/lib/x86_64-linux-gnu/ | grep liblttng-ust-cyg-profile.so
+```
+
+  You may see an output like this:![1](Pics\1.png)
+
+<br>
+
+After executing the testpmd command you should see the following output:
+![2](Pics\2.png)
+
+## 4. Create Additional RX/TX Queues
+
+Now, we will add a new queue while operating in TAP mode. However, let us retrieve relevant configuration details using the `show port stats all` and `show config fwd` commands.
+
+![3](Pics\3.png)
+
+By executing the command `show port stats all`, you will be able to view the statistics for all ports.
+
+![4](Pics\4.png)
+
+By executing the command `show config fwd`, you will see the output above. 
+Let us break it down:
+
+- `Forwarding Mode: io` -> This means packets received on a port are simply transmitted out through the corresponding transmit queue of another port.
+- `Ports: 2` -> Two physical or virtual ports are active.
+- `Cores: 1` -> One logical core (Core 5 in this case) is being used to process all forwarding tasks.
+- `Streams: 2` -> Two forwarding streams are configured, each representing a receive/transmit (RX/TX) path between ports.
+- `NUMA support: Enabled` -> The application is aware of NUMA (Non-Uniform Memory Access) node placement.
+- `MP Allocation Mode: native` -> Memory pools are allocated in native DPDK mode.
+
+
+
+For adding a new queue, we need to perform the following actions in testpmd:
+
+- Stoping all ports: `port stop all`
+- Creating new RX and TX queues: `port config all rxq 2` & `port config all txq 2`
+- Start the ports again: `port start all`
+
+![5](Pics\5.png)
+
+After this step we can verify the added queues by running `show config fwd` once more:
+
+![6](Pics\6.png)
+
 # Tracing Analysis - UDP Filtering
 
 13 milion Events captured with 887 nanosecond average standard deviation. Optimization rule increased events captured by 11.0% and decreased average of standard deviation by 88.6%.
