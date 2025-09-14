@@ -97,11 +97,14 @@ mount -t hugetlbfs none /dev/hugepages
 
 **Run dpdk-testpmd**
 ```shell
-sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' -- -i --forward-mode=io
+sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' --trace=lib.gro.* --trace-mode=overwrite --trace-bufsz=20M -- -i --forward-mode=io
 ```
 
 **Interactive configure dpdk-testpmd**
 ```shell
+set fwd csum
+csum mac-swap off 0
+csum mac-swap off 1
 stop
 port stop 0
 port stop 1
