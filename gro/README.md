@@ -135,12 +135,14 @@ sudo ip netns exec ns1 iperf3 -c 10.1.1.3 -t 0
 `rte_gro_reassemble_burst` can handle at most 32 packets in each call and merge them as most as possible. There is no timeout set for the packets since they will be flushed as soon as they get merged.
 
 ---
-![analysis1](Pics/analysis1.png)
 > ▸ _`pkts` is a pointer to mbuf linked list. `nb_pkts` is the number of packets that are supposed to be processed on that specific burst call, varying from 1 to 32. `param_max_flow_types` is the maximum number of flows inwhich reassembly table will store till sending them to application layer which is set to 4._
+
+![analysis1](Pics/analysis1.png)
 
 ## 2. Heavy mode
 with flush parameter set to 2 and above heavy mode is activated, making gro library to process packets by including timeout parameter.
 
 ---
-![analysis2](Pics/analysis2.png)
 > ▸ _`rte_gro_ctx_create` is called 3 times in each run in first place. At first glance it may seem contradictory where `param_max_item_per_flow` is set to 512, but this context is general and responsible for all protocols but will send 32 packets to specific protocol to be merged._
+
+![analysis2](Pics/analysis2.png)
