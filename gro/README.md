@@ -102,6 +102,9 @@ sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'et
 
 **Interactive configure dpdk-testpmd**
 ```shell
+set fwd csum
+csum mac-swap off 0
+csum mac-swap off 1
 stop
 port stop 0
 port stop 1
