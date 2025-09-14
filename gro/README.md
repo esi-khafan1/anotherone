@@ -15,8 +15,8 @@ Generic Receive Offload files are on `<dpdk-folder>/lib/gro/` directory. `rte_gr
 ### 2. Parameters
 GRO has 3 modes based on its [Documentation](https://doc.dpdk.org/dts-20.02/test_plans/dpdk_gro_lib_test_plan.html#test-case1-dpdk-gro-lightmode-test-with-tcp-ipv4-traffic). Different modes can be set via flush parameter in testpmd interactive mode. `rte_gro_timeout_flush` sends the packet to upper layer when timeout occurs after flush parameter value of receive burst calls. it will also update the header if the packet is merged. If any merged packet reaches maximum size of its type (like 64KB for TCP4) then it is sent to upper layer
 
-### 3. Merge Workflow
-General reassembly table of `rte_gro` passes different packet types to protocol-specific reassembly tables like TCP where merging is handled. The main responsibilites of reassembly tables' associated functions are:
+### 3. Data Structures
+General reassembly table of `rte_gro` passes different packet types to protocol-specific reassembly tables like TCP where merging is handled. Each reassembly table is a hash table, where its key is its protocol common key and its value contains a pointer to the head mbuf of the reassembled packet and other state information (e.g., the TCP sequence number it's waiting for next). The main responsibilites of reassembly tables' associated functions are:
 - **Check TCP sequence numbers** to ensure packets are contiguous.
 - **Compare the TCP 5-tuple** (source/destination IP, source/destination port, protocol) for flow matching.
 - **Handle TCP flags** like FIN and PUSH correctly, which often signal the end of a merge opportunity.
@@ -128,3 +128,16 @@ sudo ip netns exec ns1 iperf3 -c 10.1.1.3 -t 0
 # Optimization
 
 # Analysis
+## 1. Light mode
+`rte_gro_reassemble_burst` can handle at most 32 packets in each call and merge them as most as possible. There is no timeout set for the packets since they will be flushed as soon as they get merged.
+
+---
+![analysis1](Pics/analysis1.png)
+> ▸ _`pkts` is a pointer to mbuf linked list. `nb_pkts` is the number of packets that are supposed to be processed on that specific burst call, varying from 1 to 32. `param_max_flow_types` is the maximum number of flows inwhich reassembly table will store till sending them to application layer which is set to 4._
+
+## 2. Heavy mode
+with flush parameter set to 2 and above heavy mode is activated, making gro library to process packets by including timeout parameter.
+
+---
+![analysis2](Pics/analysis2.png)
+> ▸ _`rte_gro_ctx_create` is called 3 times in each run in first place. At first glance it may seem contradictory where `param_max_item_per_flow` is set to 512, but this context is general and responsible for all protocols but will send 32 packets to specific protocol to be merged._
