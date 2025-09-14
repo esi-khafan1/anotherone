@@ -128,7 +128,104 @@ On namespace ns1 run the client side
 sudo ip netns exec ns1 iperf3 -c 10.1.1.3 -t 0
 ```
 
-# Optimization
+# Performance Tuning
+
+In this section, we summarize the evaluation of the **Generic Receive Offload (GRO)** feature in the **Data Plane Development Kit (DPDK)**. The focus was to analyze the impact of GRO on packet reception and transmission, particularly how different **flush values** affect network performance.
+
+### Goal
+
+The tests aim to measure:
+
+* **Throughput**: How fast data is transmitted over the network.
+* **Packet Processing**: The number of packets received and transmitted.
+
+We tested flush values of 1, 2, and 4 to explore the trade-offs between packet aggregation and throughput.
+
+---
+
+## Flush 1
+
+**Command**: `set gro flush 1`
+
+### Test Results
+
+#### Throughput (iperf3)
+
+* **Average Throughput**: 2.71 Gbps
+* **Observation**: Throughput was stable with minor fluctuations.
+
+![throughput1](Pics/th1.png)
+
+#### Packet Statistics (dpdk-testpmd)
+
+* **RX Packets**: \~7.03M, with no errors or drops
+* **TX Packets**: \~3.29M, roughly half of the received packets
+* **RX/TX Ratio**: \~2.14, indicating effective packet merging
+
+**Observation**: GRO successfully reduced the packet rate while maintaining the same data volume.
+
+![Packet Statistic1](Pics/tpmd1.png)
+
+---
+
+## Flush 2
+
+**Command**: `set gro flush 2`
+
+### Test Results
+
+#### Throughput (iperf3)
+
+* **Average Throughput**: 2.65 Gbps
+* **Observation**: Slightly lower than Flush 1 due to added buffering, causing minor latency and occasional TCP retransmissions.
+
+![throughput2](Pics/th2.png)
+
+#### Packet Statistics (dpdk-testpmd)
+
+* **RX Packets**: \~6.76M
+* **TX Packets**: \~3.15M
+* **RX/TX Ratio**: \~2.15, showing slightly improved packet merging
+
+![Packet Statistic2](Pics/tpmd2.png)
+
+---
+
+## Flush 4
+
+**Command**: `set gro flush 4`
+
+### Test Results
+
+#### Throughput (iperf3)
+
+* **Average Throughput**: 2.64 Gbps
+
+![throughput4](Pics/th4.png)
+
+#### Packet Statistics (dpdk-testpmd)
+
+* **RX Packets**: \~6.83M
+* **TX Packets**: \~3.18M
+* **RX/TX Ratio**: \~2.15, confirming effective packet aggregation
+
+![Packet Statistic4](Pics/tpmd4.png)
+
+---
+
+## Conclusion
+
+
+
+![th_all](Pics/th124.png)
+
+![ch](Pics/ch.png)
+
+
+* **Flush 1** gives the highest throughput (2.71 Gbps) but generates more packets to process.
+* **Flush 2** slightly reduces throughput (\~2.65 Gbps) but improves packet aggregation efficiency.
+* **Flush 4** achieves the best balance between throughput and packet merging, reducing CPU load without sacrificing much speed.
+
 
 # Analysis
 ## 1. Light mode
