@@ -133,6 +133,27 @@ On namespace ns1 run the client side
 sudo ip netns exec ns1 iperf3 -c 10.1.1.3 -t 0
 ```
 
+**Set Up an LTTng Trace Session**
+```shell
+touch script.sh
+chmod +x script.sh
+nano script.sh
+```
+
+Paste the following commands into the file:
+```shell
+#!/bin/bash
+lttng create libpcap
+lttng enable-channel --userspace --num-subbuf=4 --subbuf-size=40M channel0
+#lttng enable-channel --userspace channel0
+lttng enable-event --channel channel0 --userspace --all
+lttng add-context --channel channel0 --userspace --type=vpid --type=vtid --type=procname
+lttng start
+sleep 2
+lttng stop
+lttng destroy
+```
+
 # Performance Tuning
 
 In this section, we summarize the evaluation of the **Generic Receive Offload (GRO)** feature in the **Data Plane Development Kit (DPDK)**. The focus was to analyze the impact of GRO on packet reception and transmission, particularly how different **flush values** affect network performance.
