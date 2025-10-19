@@ -80,6 +80,11 @@ meson setup build \
 -Dc_args="-finstrument-functions"
 ```
 
+**plain build for more comprehensive lttng trace**
+```shell
+meson configure build -Dbuildtype=plain -Dc_args="-finstrument-functions"
+```
+
 **Ninja for Build and Install**
 ```shell
 cd build
@@ -97,7 +102,7 @@ mount -t hugetlbfs none /dev/hugepages
 
 **Run dpdk-testpmd**
 ```shell
-sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' --trace=lib.gro.* --trace-mode=overwrite --trace-bufsz=20M -- -i --forward-mode=io
+sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' -- -i --forward-mode=io
 ```
 
 **Interactive configure dpdk-testpmd**
