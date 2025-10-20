@@ -102,7 +102,7 @@ mount -t hugetlbfs none /dev/hugepages
 
 **Run dpdk-testpmd**
 ```shell
-sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' -- -i --forward-mode=io
+sudo LD_PRELOAD=/usr/lib/x86_64-linux-gnu/liblttng-ust-cyg-profile.so.1 dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' -- -i --forward-mode=io
 ```
 
 **Interactive configure dpdk-testpmd**
