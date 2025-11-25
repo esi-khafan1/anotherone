@@ -104,7 +104,7 @@ sudo LD_PRELOAD=/usr/lib/x86_64-linux-gnu/liblttng-ust-cyg-profile.so.1 dpdk-tes
 
 **Run dpdk-testpmd for dpdk tracepoints**
 ```shell
-sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' --trace=lib.gro_csum.* --trace-mode=overwrite --trace-bufsz=20M -- -i
+sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' --trace=lib.gro_csum.* --trace-mode=discard --trace-bufsz=20M -- -i
 ```
 
 **Interactive configure dpdk-testpmd**
