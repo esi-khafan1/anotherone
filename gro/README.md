@@ -74,15 +74,11 @@ sudo ip netns exec ns2 ethtool -K veth-ns2 tx off rx off
 **Meson Configuration of Build Environment**
 ```shell
 meson setup build \
--Dexamples=all \
--Dlibdir=lib \
--Denable_trace_fp=true \
--Dc_args="-finstrument-functions"
-```
-
-**plain build for more comprehensive lttng trace**
-```shell
-meson configure build -Dbuildtype=plain -Dc_args="-finstrument-functions"
+  -Dexamples=all \
+  -Dlibdir=lib \
+  -Denable_trace_fp=true \
+  -Dbuildtype=plain \
+  -Dc_args="-finstrument-functions"
 ```
 
 **Ninja for Build and Install**
@@ -100,9 +96,15 @@ mount -t hugetlbfs none /dev/hugepages
 ```
 
 
-**Run dpdk-testpmd**
+**Run dpdk-testpmd for lttng trace**
 ```shell
-sudo LD_PRELOAD=/usr/lib/x86_64-linux-gnu/liblttng-ust-cyg-profile.so.1 dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' -- -i --forward-mode=io
+sudo LD_PRELOAD=/usr/lib/x86_64-linux-gnu/liblttng-ust-cyg-profile.so.1 dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' -- -i
+```
+
+
+**Run dpdk-testpmd for dpdk tracepoints**
+```shell
+sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'eth_af_packet1,iface=veth-host2' --trace=lib.gro_csum.* --trace-mode=overwrite --trace-bufsz=20M -- -i
 ```
 
 **Interactive configure dpdk-testpmd**
