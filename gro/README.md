@@ -116,7 +116,6 @@ stop
 port stop 0
 port stop 1
 set port 0 gro on
-set port 1 gro on
 set gro flush 2
 port start 0
 port start 1
