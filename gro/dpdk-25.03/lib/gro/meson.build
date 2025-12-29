@@ -8,10 +8,13 @@ sources = files(
         'gro_udp4.c',
         'gro_vxlan_tcp4.c',
         'gro_vxlan_udp4.c',
+        'gro_gtp_tcp4.c',
+        'gro_gtp_udp4.c',
         'gro_trace_points.c',
 )
 headers = files(
         'rte_gro.h',
         'gro_trace.h',
+        'rte_gro.h',
 )
 deps += ['ethdev']
