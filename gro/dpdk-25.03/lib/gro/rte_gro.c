@@ -12,7 +12,8 @@
 #include "gro_udp4.h"
 #include "gro_vxlan_tcp4.h"
 #include "gro_vxlan_udp4.h"
-#include "gro_trace.h"
+#include "gro_gtp_tcp4.h"
+#include "gro_gtp_udp4.h"
 
 typedef void *(*gro_tbl_create_fn)(uint16_t socket_id,
 		uint16_t max_flow_num,
@@ -22,17 +23,18 @@ typedef uint32_t (*gro_tbl_pkt_count_fn)(void *tbl);
 
 static gro_tbl_create_fn tbl_create_fn[RTE_GRO_TYPE_MAX_NUM] = {
 		gro_tcp4_tbl_create, gro_vxlan_tcp4_tbl_create,
-		gro_udp4_tbl_create, gro_vxlan_udp4_tbl_create, gro_tcp6_tbl_create, NULL};
+		gro_udp4_tbl_create, gro_vxlan_udp4_tbl_create, gro_tcp6_tbl_create, 
+		gro_gtp_tcp4_tbl_create, gro_gtp_udp4_tbl_create, NULL};
 static gro_tbl_destroy_fn tbl_destroy_fn[RTE_GRO_TYPE_MAX_NUM] = {
 			gro_tcp4_tbl_destroy, gro_vxlan_tcp4_tbl_destroy,
 			gro_udp4_tbl_destroy, gro_vxlan_udp4_tbl_destroy,
-			gro_tcp6_tbl_destroy,
-			NULL};
+			gro_tcp6_tbl_destroy, gro_gtp_tcp4_tbl_destroy,
+			gro_gtp_udp4_tbl_destroy, NULL};
 static gro_tbl_pkt_count_fn tbl_pkt_count_fn[RTE_GRO_TYPE_MAX_NUM] = {
 			gro_tcp4_tbl_pkt_count, gro_vxlan_tcp4_tbl_pkt_count,
 			gro_udp4_tbl_pkt_count, gro_vxlan_udp4_tbl_pkt_count,
-			gro_tcp6_tbl_pkt_count,
-			NULL};
+			gro_tcp6_tbl_pkt_count, gro_gtp_tcp4_tbl_pkt_count,
+			gro_gtp_udp4_tbl_pkt_count, NULL};
 
 #define IS_IPV4_TCP_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
 		((ptype & RTE_PTYPE_L4_TCP) == RTE_PTYPE_L4_TCP) && \
@@ -76,6 +78,33 @@ static gro_tbl_pkt_count_fn tbl_pkt_count_fn[RTE_GRO_TYPE_MAX_NUM] = {
 		 ((ptype & RTE_PTYPE_INNER_L3_MASK) == \
 		  RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)))
 
+#define IS_IPV4_GTP_UDP4_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
+		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) && \
+		((ptype & RTE_PTYPE_TUNNEL_GTPU) == \
+		RTE_PTYPE_TUNNEL_GTPU) && \
+		((ptype & RTE_PTYPE_INNER_L4_UDP) == \
+		RTE_PTYPE_INNER_L4_UDP) && \
+		(((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		RTE_PTYPE_INNER_L3_IPV4) || \
+		((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		RTE_PTYPE_INNER_L3_IPV4_EXT) || \
+		((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)))
+
+#define IS_IPV4_GTP_TCP4_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
+		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) && \
+		((ptype & RTE_PTYPE_L4_FRAG) != RTE_PTYPE_L4_FRAG) && \
+		((ptype & RTE_PTYPE_TUNNEL_GTPU) == \
+		RTE_PTYPE_TUNNEL_GTPU) && \
+		((ptype & RTE_PTYPE_INNER_L4_TCP) == \
+		RTE_PTYPE_INNER_L4_TCP) && \
+		(((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		RTE_PTYPE_INNER_L3_IPV4) || \
+		((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		RTE_PTYPE_INNER_L3_IPV4_EXT) || \
+		((ptype & RTE_PTYPE_INNER_L3_MASK) == \
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)))
+
 /*
  * GRO context structure. It keeps the table structures, which are
  * used to merge packets, for different GRO types. Before using
@@ -92,7 +121,6 @@ struct gro_ctx {
 void *
 rte_gro_ctx_create(const struct rte_gro_param *param)
 {
-	rte_gro_trace_create_start();
 	struct gro_ctx *gro_ctx;
 	gro_tbl_create_fn create_tbl_fn;
 	uint64_t gro_type_flag = 0;
@@ -128,15 +156,12 @@ rte_gro_ctx_create(const struct rte_gro_param *param)
 	}
 	gro_ctx->gro_types = param->gro_types;
 
-	rte_gro_trace_create_end();
-
 	return gro_ctx;
 }
 
 void
 rte_gro_ctx_destroy(void *ctx)
 {
-	rte_gro_trace_destroy_start();
 	gro_tbl_destroy_fn destroy_tbl_fn;
 	struct gro_ctx *gro_ctx = ctx;
 	uint64_t gro_type_flag;
@@ -150,8 +175,6 @@ rte_gro_ctx_destroy(void *ctx)
 		if (destroy_tbl_fn)
 			destroy_tbl_fn(gro_ctx->tbls[i]);
 	}
-
-	rte_gro_trace_destroy_end();
 	rte_free(gro_ctx);
 }
 
@@ -186,15 +209,30 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 	struct gro_vxlan_udp4_item vxlan_udp_items[RTE_GRO_MAX_BURST_ITEM_NUM]
 			= {{{0}} };
 
+	/* Allocate a reassembly table for GTP TCP GRO */
+	struct gro_gtp_tcp4_tbl gtp_tcp_tbl;
+	struct gro_gtp_tcp4_flow gtp_tcp_flows[RTE_GRO_MAX_BURST_ITEM_NUM];
+	struct gro_gtp_tcp4_item gtp_tcp_items[RTE_GRO_MAX_BURST_ITEM_NUM]
+			= {{{0}, 0, 0} };
+
+	/* Allocate a reassembly table for GTP UDP GRO */
+	struct gro_gtp_udp4_tbl gtp_udp_tbl;
+	struct gro_gtp_udp4_flow gtp_udp_flows[RTE_GRO_MAX_BURST_ITEM_NUM];
+	struct gro_gtp_udp4_item gtp_udp_items[RTE_GRO_MAX_BURST_ITEM_NUM]
+			= {{{0}} };
+
 	uint32_t item_num;
 	int32_t ret;
 	uint16_t i, unprocess_num = 0, nb_after_gro = nb_pkts;
 	uint8_t do_tcp4_gro = 0, do_vxlan_tcp_gro = 0, do_udp4_gro = 0,
-		do_vxlan_udp_gro = 0, do_tcp6_gro = 0;
+		do_vxlan_udp_gro = 0, do_tcp6_gro = 0, do_gtp_tcp_gro = 0,
+		do_gtp_udp_gro = 0;
 
 	if (unlikely((param->gro_types & (RTE_GRO_IPV4_VXLAN_TCP_IPV4 |
 					RTE_GRO_TCP_IPV4 | RTE_GRO_TCP_IPV6 |
 					RTE_GRO_IPV4_VXLAN_UDP_IPV4 |
+					RTE_GRO_IPV4_GTP_TCP_IPV4 |
+					RTE_GRO_IPV4_GTP_UDP_IPV4 |
 					RTE_GRO_UDP_IPV4)) == 0))
 		return nb_pkts;
 
@@ -227,6 +265,32 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 		vxlan_udp_tbl.max_flow_num = item_num;
 		vxlan_udp_tbl.max_item_num = item_num;
 		do_vxlan_udp_gro = 1;
+	}
+
+	if (param->gro_types & RTE_GRO_IPV4_GTP_TCP_IPV4) {
+		for (i = 0; i < item_num; i++)
+			gtp_tcp_flows[i].start_index = INVALID_ARRAY_INDEX;
+
+		gtp_tcp_tbl.flows = gtp_tcp_flows;
+		gtp_tcp_tbl.items = gtp_tcp_items;
+		gtp_tcp_tbl.flow_num = 0;
+		gtp_tcp_tbl.item_num = 0;
+		gtp_tcp_tbl.max_flow_num = item_num;
+		gtp_tcp_tbl.max_item_num = item_num;
+		do_gtp_tcp_gro = 1;
+	}
+
+	if (param->gro_types & RTE_GRO_IPV4_GTP_UDP_IPV4) {
+		for (i = 0; i < item_num; i++)
+			gtp_udp_flows[i].start_index = INVALID_ARRAY_INDEX;
+
+		gtp_udp_tbl.flows = gtp_udp_flows;
+		gtp_udp_tbl.items = gtp_udp_items;
+		gtp_udp_tbl.flow_num = 0;
+		gtp_udp_tbl.item_num = 0;
+		gtp_udp_tbl.max_flow_num = item_num;
+		gtp_udp_tbl.max_item_num = item_num;
+		do_gtp_udp_gro = 1;
 	}
 
 	if (param->gro_types & RTE_GRO_TCP_IPV4) {
@@ -291,6 +355,24 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 				nb_after_gro--;
 			else if (ret < 0)
 				pkts[unprocess_num++] = pkts[i];
+		} else if (IS_IPV4_GTP_TCP4_PKT(pkts[i]->packet_type) &&
+				do_gtp_tcp_gro) {
+			ret = gro_gtp_tcp4_reassemble(pkts[i],
+							&gtp_tcp_tbl, 0);
+			if (ret > 0)
+				/* Merge successfully */
+				nb_after_gro--;
+			else if (ret < 0)
+				pkts[unprocess_num++] = pkts[i];
+		} else if (IS_IPV4_GTP_UDP4_PKT(pkts[i]->packet_type) &&
+				do_gtp_udp_gro) {
+			ret = gro_gtp_udp4_reassemble(pkts[i],
+							&gtp_udp_tbl, 0);
+			if (ret > 0)
+				/* Merge successfully */
+				nb_after_gro--;
+			else if (ret < 0)
+				pkts[unprocess_num++] = pkts[i];
 		} else if (IS_IPV4_TCP_PKT(pkts[i]->packet_type) &&
 				do_tcp4_gro) {
 			ret = gro_tcp4_reassemble(pkts[i], &tcp_tbl, 0);
@@ -336,6 +418,16 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 
 		}
 
+		if (do_gtp_tcp_gro) {
+			i += gro_gtp_tcp4_tbl_timeout_flush(&gtp_tcp_tbl,
+					0, &pkts[i], nb_pkts - i);
+		}
+
+		if (do_gtp_udp_gro) {
+			i += gro_gtp_udp4_tbl_timeout_flush(&gtp_udp_tbl,
+					0, &pkts[i], nb_pkts - i);
+		}		
+
 		if (do_tcp4_gro) {
 			i += gro_tcp4_tbl_timeout_flush(&tcp_tbl, 0,
 					&pkts[i], nb_pkts - i);
@@ -360,16 +452,18 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 		uint16_t nb_pkts,
 		void *ctx)
 {
-	rte_gro_trace_reassemble_start();
 	struct gro_ctx *gro_ctx = ctx;
-	void *tcp_tbl, *udp_tbl, *vxlan_tcp_tbl, *vxlan_udp_tbl, *tcp6_tbl;
+	void *tcp_tbl, *udp_tbl, *vxlan_tcp_tbl, *vxlan_udp_tbl, *tcp6_tbl, *gtp_tcp_tbl, *gtp_udp_tbl;
 	uint64_t current_time;
 	uint16_t i, unprocess_num = 0;
-	uint8_t do_tcp4_gro, do_vxlan_tcp_gro, do_udp4_gro, do_vxlan_udp_gro, do_tcp6_gro;
+	uint8_t do_tcp4_gro, do_vxlan_tcp_gro, do_udp4_gro, do_vxlan_udp_gro, do_tcp6_gro,
+		do_gtp_tcp_gro, do_gtp_udp_gro;
 
 	if (unlikely((gro_ctx->gro_types & (RTE_GRO_IPV4_VXLAN_TCP_IPV4 |
 					RTE_GRO_TCP_IPV4 | RTE_GRO_TCP_IPV6 |
 					RTE_GRO_IPV4_VXLAN_UDP_IPV4 |
+					RTE_GRO_IPV4_GTP_TCP_IPV4 |
+					RTE_GRO_IPV4_GTP_UDP_IPV4 |
 					RTE_GRO_UDP_IPV4)) == 0))
 		return nb_pkts;
 
@@ -377,6 +471,8 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 	vxlan_tcp_tbl = gro_ctx->tbls[RTE_GRO_IPV4_VXLAN_TCP_IPV4_INDEX];
 	udp_tbl = gro_ctx->tbls[RTE_GRO_UDP_IPV4_INDEX];
 	vxlan_udp_tbl = gro_ctx->tbls[RTE_GRO_IPV4_VXLAN_UDP_IPV4_INDEX];
+	gtp_tcp_tbl = gro_ctx->tbls[RTE_GRO_IPV4_GTP_TCP_IPV4_INDEX];
+	gtp_udp_tbl = gro_ctx->tbls[RTE_GRO_IPV4_GTP_UDP_IPV4_INDEX];
 	tcp6_tbl = gro_ctx->tbls[RTE_GRO_TCP_IPV6_INDEX];
 
 	do_tcp4_gro = (gro_ctx->gro_types & RTE_GRO_TCP_IPV4) ==
@@ -387,23 +483,15 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 		RTE_GRO_UDP_IPV4;
 	do_vxlan_udp_gro = (gro_ctx->gro_types & RTE_GRO_IPV4_VXLAN_UDP_IPV4) ==
 		RTE_GRO_IPV4_VXLAN_UDP_IPV4;
+	do_gtp_tcp_gro = (gro_ctx->gro_types & RTE_GRO_IPV4_GTP_TCP_IPV4) ==
+		RTE_GRO_IPV4_GTP_TCP_IPV4;
+	do_gtp_udp_gro = (gro_ctx->gro_types & RTE_GRO_IPV4_GTP_UDP_IPV4) ==
+		RTE_GRO_IPV4_GTP_UDP_IPV4;
 	do_tcp6_gro = (gro_ctx->gro_types & RTE_GRO_TCP_IPV6) == RTE_GRO_TCP_IPV6;
 
 	current_time = rte_rdtsc();
 
 	for (i = 0; i < nb_pkts; i++) {
-
-		// /* Trace macro values for monitoring */
-		// uint32_t ptype = pkts[i]->packet_type;
-		// uint8_t is_ipv4_tcp = IS_IPV4_TCP_PKT(ptype);
-		// uint8_t is_ipv6_tcp = IS_IPV6_TCP_PKT(ptype);
-		// uint8_t is_ipv4_udp = IS_IPV4_UDP_PKT(ptype);
-		// uint8_t is_ipv4_vxlan_tcp4 = IS_IPV4_VXLAN_TCP4_PKT(ptype);
-		// uint8_t is_ipv4_vxlan_udp4 = IS_IPV4_VXLAN_UDP4_PKT(ptype);
-		
-		// rte_gro_trace_macro_values_reassemble(ptype, is_ipv4_tcp, is_ipv6_tcp,
-		// 		is_ipv4_udp, is_ipv4_vxlan_tcp4, is_ipv4_vxlan_udp4);
-
 		if (IS_IPV4_VXLAN_TCP4_PKT(pkts[i]->packet_type) &&
 				do_vxlan_tcp_gro) {
 			if (gro_vxlan_tcp4_reassemble(pkts[i], vxlan_tcp_tbl,
@@ -414,11 +502,20 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 			if (gro_vxlan_udp4_reassemble(pkts[i], vxlan_udp_tbl,
 						current_time) < 0)
 				pkts[unprocess_num++] = pkts[i];
+		} else if (IS_IPV4_GTP_TCP4_PKT(pkts[i]->packet_type) &&
+				do_gtp_tcp_gro) {
+			if (gro_gtp_tcp4_reassemble(pkts[i], gtp_tcp_tbl,
+						current_time) < 0)
+				pkts[unprocess_num++] = pkts[i];
+		} else if (IS_IPV4_GTP_UDP4_PKT(pkts[i]->packet_type) &&
+				do_gtp_udp_gro) {
+			if (gro_gtp_udp4_reassemble(pkts[i], gtp_udp_tbl,
+						current_time) < 0)
+				pkts[unprocess_num++] = pkts[i];				
 		} else if (IS_IPV4_TCP_PKT(pkts[i]->packet_type) &&
 				do_tcp4_gro) {
-			int32_t answer = gro_tcp4_reassemble(pkts[i], tcp_tbl,current_time);
-			rte_gro_trace_tcp4_reassemble_output(answer);
-			if (answer < 0)
+			if (gro_tcp4_reassemble(pkts[i], tcp_tbl,
+						current_time) < 0)
 				pkts[unprocess_num++] = pkts[i];
 		} else if (IS_IPV4_UDP_PKT(pkts[i]->packet_type) &&
 				do_udp4_gro) {
@@ -434,7 +531,6 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 			pkts[unprocess_num++] = pkts[i];
 	}
 
-	rte_gro_trace_reassemble_end();
 	return unprocess_num;
 }
 
@@ -445,7 +541,6 @@ rte_gro_timeout_flush(void *ctx,
 		struct rte_mbuf **out,
 		uint16_t max_nb_out)
 {
-	rte_gro_trace_timeout_start();
 	struct gro_ctx *gro_ctx = ctx;
 	uint64_t flush_timestamp;
 	uint16_t num = 0;
@@ -464,6 +559,20 @@ rte_gro_timeout_flush(void *ctx,
 	if ((gro_types & RTE_GRO_IPV4_VXLAN_UDP_IPV4) && left_nb_out > 0) {
 		num += gro_vxlan_udp4_tbl_timeout_flush(gro_ctx->tbls[
 				RTE_GRO_IPV4_VXLAN_UDP_IPV4_INDEX],
+				flush_timestamp, &out[num], left_nb_out);
+		left_nb_out = max_nb_out - num;
+	}
+
+	if (gro_types & RTE_GRO_IPV4_GTP_TCP_IPV4) {
+		num = gro_gtp_tcp4_tbl_timeout_flush(gro_ctx->tbls[
+				RTE_GRO_IPV4_GTP_TCP_IPV4_INDEX],
+				flush_timestamp, out, left_nb_out);
+		left_nb_out = max_nb_out - num;
+	}
+
+	if ((gro_types & RTE_GRO_IPV4_GTP_UDP_IPV4) && left_nb_out > 0) {
+		num += gro_gtp_udp4_tbl_timeout_flush(gro_ctx->tbls[
+				RTE_GRO_IPV4_GTP_UDP_IPV4_INDEX],
 				flush_timestamp, &out[num], left_nb_out);
 		left_nb_out = max_nb_out - num;
 	}
@@ -494,15 +603,12 @@ rte_gro_timeout_flush(void *ctx,
 
 	}
 
-	rte_gro_trace_timeout_end();
-
 	return num;
 }
 
 uint64_t
 rte_gro_get_pkt_count(void *ctx)
 {
-	// rte_gro_trace_pkt_count_start();
 	struct gro_ctx *gro_ctx = ctx;
 	gro_tbl_pkt_count_fn pkt_count_fn;
 	uint64_t gro_types = gro_ctx->gro_types, flag;
@@ -519,8 +625,6 @@ rte_gro_get_pkt_count(void *ctx)
 		if (pkt_count_fn)
 			item_num += pkt_count_fn(gro_ctx->tbls[i]);
 	}
-
-	// rte_gro_trace_pkt_count_end();
 
 	return item_num;
 }
