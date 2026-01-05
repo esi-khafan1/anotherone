@@ -1764,7 +1764,8 @@ init_config(void)
 
 #ifdef RTE_LIB_GRO
 	/* create a gro context for each lcore */
-	gro_param.gro_types = RTE_GRO_TCP_IPV4;
+	// gro_param.gro_types = RTE_GRO_TCP_IPV4;
+	gro_param.gro_types = RTE_GRO_IPV4_GTP_TCP_IPV4;
 	gro_param.max_flow_num = GRO_MAX_FLUSH_CYCLES;
 	gro_param.max_item_per_flow = MAX_PKT_BURST;
 	for (lc_id = 0; lc_id < nb_lcores; lc_id++) {
