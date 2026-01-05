@@ -29,6 +29,7 @@ headers = files(
         'rte_l2tpv2.h',
         'rte_ppp.h',
         'rte_ib.h',
+        'net_trace.h',
 )
 
 sources = files(
@@ -36,6 +37,7 @@ sources = files(
         'rte_ether.c',
         'rte_net.c',
         'rte_net_crc.c',
+        'net_trace_points.c',
 )
 deps += ['mbuf']
 

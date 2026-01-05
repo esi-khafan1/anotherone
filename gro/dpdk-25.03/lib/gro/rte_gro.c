@@ -14,6 +14,7 @@
 #include "gro_vxlan_udp4.h"
 #include "gro_gtp_tcp4.h"
 #include "gro_gtp_udp4.h"
+#include "gro_trace.h"
 
 typedef void *(*gro_tbl_create_fn)(uint16_t socket_id,
 		uint16_t max_flow_num,
@@ -121,6 +122,7 @@ struct gro_ctx {
 void *
 rte_gro_ctx_create(const struct rte_gro_param *param)
 {
+	// rte_gro_trace_create_start();
 	struct gro_ctx *gro_ctx;
 	gro_tbl_create_fn create_tbl_fn;
 	uint64_t gro_type_flag = 0;
@@ -155,6 +157,7 @@ rte_gro_ctx_create(const struct rte_gro_param *param)
 		gro_types |= gro_type_flag;
 	}
 	gro_ctx->gro_types = param->gro_types;
+	// rte_gro_trace_create_end();
 
 	return gro_ctx;
 }
@@ -488,10 +491,25 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 	do_gtp_udp_gro = (gro_ctx->gro_types & RTE_GRO_IPV4_GTP_UDP_IPV4) ==
 		RTE_GRO_IPV4_GTP_UDP_IPV4;
 	do_tcp6_gro = (gro_ctx->gro_types & RTE_GRO_TCP_IPV6) == RTE_GRO_TCP_IPV6;
+	rte_gro_trace_types(gro_ctx->gro_types);
+	rte_gro_trace_do_gtp_tcp(do_gtp_tcp_gro);
 
 	current_time = rte_rdtsc();
 
 	for (i = 0; i < nb_pkts; i++) {
+
+		uint32_t ptype = pkts[i]->packet_type;
+		uint8_t is_ipv4_tcp = IS_IPV4_TCP_PKT(ptype);
+		uint8_t is_ipv6_tcp = IS_IPV6_TCP_PKT(ptype);
+		uint8_t is_ipv4_udp = IS_IPV4_UDP_PKT(ptype);
+		uint8_t is_ipv4_vxlan_tcp4 = IS_IPV4_VXLAN_TCP4_PKT(ptype);
+		uint8_t is_ipv4_vxlan_udp4 = IS_IPV4_VXLAN_UDP4_PKT(ptype);
+		uint8_t is_ipv4_gtp_tcp4 = IS_IPV4_GTP_TCP4_PKT(ptype);
+		uint8_t is_ipv4_gtp_udp4 = IS_IPV4_GTP_UDP4_PKT(ptype);
+		
+		rte_gro_trace_macro_values_reassemble(ptype, is_ipv4_tcp, is_ipv6_tcp,
+				is_ipv4_udp, is_ipv4_vxlan_tcp4, is_ipv4_vxlan_udp4, is_ipv4_gtp_tcp4, is_ipv4_gtp_udp4);
+
 		if (IS_IPV4_VXLAN_TCP4_PKT(pkts[i]->packet_type) &&
 				do_vxlan_tcp_gro) {
 			if (gro_vxlan_tcp4_reassemble(pkts[i], vxlan_tcp_tbl,
@@ -504,8 +522,9 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 				pkts[unprocess_num++] = pkts[i];
 		} else if (IS_IPV4_GTP_TCP4_PKT(pkts[i]->packet_type) &&
 				do_gtp_tcp_gro) {
-			if (gro_gtp_tcp4_reassemble(pkts[i], gtp_tcp_tbl,
-						current_time) < 0)
+			int32_t answer = gro_gtp_tcp4_reassemble(pkts[i], gtp_tcp_tbl, current_time);
+			rte_gro_trace_gtp4_reassemble_output(answer);
+			if (answer < 0)
 				pkts[unprocess_num++] = pkts[i];
 		} else if (IS_IPV4_GTP_UDP4_PKT(pkts[i]->packet_type) &&
 				do_gtp_udp_gro) {

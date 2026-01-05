@@ -35,19 +35,34 @@ RTE_TRACE_POINT(
 RTE_TRACE_POINT(
     rte_gro_trace_macro_values_reassemble,
     RTE_TRACE_POINT_ARGS(uint32_t ptype, uint8_t is_ipv4_tcp, uint8_t is_ipv6_tcp, 
-    uint8_t is_ipv4_udp, uint8_t is_ipv4_vxlan_tcp4, uint8_t is_ipv4_vxlan_udp4),
+    uint8_t is_ipv4_udp, uint8_t is_ipv4_vxlan_tcp4, uint8_t is_ipv4_vxlan_udp4,
+	uint8_t is_ipv4_gtp_tcp4, uint8_t is_ipv4_gtp_udp4),
     rte_trace_point_emit_u32(ptype);
 	rte_trace_point_emit_u8(is_ipv4_tcp);
 	rte_trace_point_emit_u8(is_ipv6_tcp);
 	rte_trace_point_emit_u8(is_ipv4_udp);
 	rte_trace_point_emit_u8(is_ipv4_vxlan_tcp4);
 	rte_trace_point_emit_u8(is_ipv4_vxlan_udp4);
+	rte_trace_point_emit_u8(is_ipv4_gtp_tcp4);
+	rte_trace_point_emit_u8(is_ipv4_gtp_udp4);
 )
 
 RTE_TRACE_POINT(
-	rte_gro_trace_tcp4_reassemble_output,
+	rte_gro_trace_gtp4_reassemble_output,
 	RTE_TRACE_POINT_ARGS(int32_t answer),
 	rte_trace_point_emit_i32(answer);
+)
+
+RTE_TRACE_POINT(
+	rte_gro_trace_types,
+	RTE_TRACE_POINT_ARGS(uint64_t gro_ctx_type),
+	rte_trace_point_emit_u64(gro_ctx_type);
+)
+
+RTE_TRACE_POINT(
+	rte_gro_trace_do_gtp_tcp,
+	RTE_TRACE_POINT_ARGS(uint8_t do_gtp_tcp),
+	rte_trace_point_emit_u8(do_gtp_tcp);
 )
 
 RTE_TRACE_POINT(
