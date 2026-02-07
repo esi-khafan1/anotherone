@@ -519,16 +519,12 @@ l3:
 		proto = vh->eth_proto;
 	}
 
-	if (proto == RTE_GTP_TYPE_IPV4)
-	{
-		pkt_type |= (RTE_PTYPE_INNER_L3_IPV4 | RTE_PTYPE_INNER_L4_TCP);
-	}
-
 	if ((layers & RTE_PTYPE_INNER_L3_MASK) == 0)
 		return pkt_type;
 
 	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4) ||
-		proto == RTE_VXLAN_GPE_TYPE_IPV4) {
+		proto == RTE_VXLAN_GPE_TYPE_IPV4 ||
+		proto == RTE_GTP_TYPE_IPV4) {
 		const struct rte_ipv4_hdr *ip4h;
 		struct rte_ipv4_hdr ip4h_copy;
 
