@@ -8,6 +8,7 @@
 #include <rte_udp.h>
 
 #include "gro_gtp_tcp4.h"
+#include "gro_trace.h"
 
 void *
 gro_gtp_tcp4_tbl_create(uint16_t socket_id,
@@ -301,14 +302,14 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
     uint32_t i, max_flow_num, remaining_flow_num;
     int cmp;
     uint16_t hdr_len;
-    uint8_t find;
+    uint8_t find; int32_t myanswer = 0;
 
     /*
     * Don't process the packet whose TCP header length is greater
     * than 60 bytes or less than 20 bytes.
     */
     if (unlikely(INVALID_TCP_HDRLEN(pkt->l4_len)))
-        return -1;
+        {myanswer=312; rte_gro_trace_tcp4_reassemble_error_line(myanswer); return -1;}
 
     outer_eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
     outer_ipv4_hdr = (struct rte_ipv4_hdr *)((char *)outer_eth_hdr +
@@ -327,7 +328,7 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
     * ECE or CWR set.
     */
     if (tcp_hdr->tcp_flags != RTE_TCP_ACK_FLAG)
-        return -1;
+        {myanswer=331; rte_gro_trace_tcp4_reassemble_error_line(myanswer); return -1;}
 
     hdr_len = pkt->outer_l2_len + pkt->outer_l3_len + pkt->l2_len +
         pkt->l3_len + pkt->l4_len;
@@ -337,7 +338,7 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
     */
     tcp_dl = pkt->pkt_len - hdr_len;
     if (tcp_dl <= 0)
-        return -1;
+        {myanswer=341; rte_gro_trace_tcp4_reassemble_error_line(myanswer); return -1;}
 
     /*
     * Save IPv4 ID for the packet whose DF bit is 0. For the packet
@@ -395,7 +396,7 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
                 INVALID_ARRAY_INDEX, sent_seq, outer_ip_id,
                 ip_id, outer_is_atomic, is_atomic);
         if (item_idx == INVALID_ARRAY_INDEX)
-            return -1;
+            {myanswer=341; rte_gro_trace_tcp4_reassemble_error_line(myanswer); return -1;}
         if (insert_new_flow(tbl, &key, item_idx) ==
                 INVALID_ARRAY_INDEX) {
             /*
@@ -403,7 +404,7 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
             * delete the inserted packet.
             */
             delete_item(tbl, item_idx, INVALID_ARRAY_INDEX);
-            return -1;
+            {myanswer=341; rte_gro_trace_tcp4_reassemble_error_line(myanswer); return -1;}
         }
         return 0;
     }
@@ -430,7 +431,7 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
                         ip_id, outer_is_atomic,
                         is_atomic) ==
                     INVALID_ARRAY_INDEX)
-                return -1;
+                {myanswer=341; rte_gro_trace_tcp4_reassemble_error_line(myanswer); return -1;}
             return 0;
         }
         prev_idx = cur_idx;
@@ -441,7 +442,7 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
     if (insert_new_item(tbl, pkt, start_time, prev_idx, sent_seq,
                 outer_ip_id, ip_id, outer_is_atomic,
                 is_atomic) == INVALID_ARRAY_INDEX)
-        return -1;
+        {myanswer=341; rte_gro_trace_tcp4_reassemble_error_line(myanswer); return -1;}
 
     return 0;
 }
