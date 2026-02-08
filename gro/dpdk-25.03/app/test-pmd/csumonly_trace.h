@@ -28,6 +28,12 @@ RTE_TRACE_POINT(
     rte_trace_point_emit_u32(ptype);
 )
 
+RTE_TRACE_POINT(
+	net_trace_l4_len,
+	RTE_TRACE_POINT_ARGS(uint16_t l4_len),
+	rte_trace_point_emit_u16(l4_len);
+)
+
 // RTE_TRACE_POINT(
 //     rte_gro_trace_ctx_destroy,
 //     RTE_TRACE_POINT_ARGS(const void *ctx),

@@ -38,6 +38,11 @@ RTE_TRACE_POINT(
     rte_trace_point_emit_u16(proto);
 )
 
+RTE_TRACE_POINT(
+    rte_net_trace_hdr_len,
+    RTE_TRACE_POINT_ARGS(uint16_t len),
+    rte_trace_point_emit_u16(len);
+)
 
 #ifdef __cplusplus
 }

@@ -67,8 +67,8 @@ RTE_TRACE_POINT(
 
 RTE_TRACE_POINT(
 	rte_gro_trace_tcp4_reassemble_error_line,
-	RTE_TRACE_POINT_ARGS(int32_t line),
-	rte_trace_point_emit_i32(line);
+	RTE_TRACE_POINT_ARGS(uint64_t line),
+	rte_trace_point_emit_u64(line);
 )
 
 RTE_TRACE_POINT(

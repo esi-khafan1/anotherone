@@ -302,14 +302,14 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
     uint32_t i, max_flow_num, remaining_flow_num;
     int cmp;
     uint16_t hdr_len;
-    uint8_t find; int32_t myanswer = 0;
+    uint8_t find; uint64_t myanswer = 0;
 
     /*
     * Don't process the packet whose TCP header length is greater
     * than 60 bytes or less than 20 bytes.
     */
     if (unlikely(INVALID_TCP_HDRLEN(pkt->l4_len)))
-        {myanswer=312; rte_gro_trace_tcp4_reassemble_error_line(myanswer); return -1;}
+        {myanswer=312; rte_gro_trace_tcp4_reassemble_error_line(pkt->l4_len); return -1;}
 
     outer_eth_hdr = rte_pktmbuf_mtod(pkt, struct rte_ether_hdr *);
     outer_ipv4_hdr = (struct rte_ipv4_hdr *)((char *)outer_eth_hdr +
@@ -318,9 +318,10 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
             pkt->outer_l3_len);
     gtp_hdr = (struct rte_gtp_hdr *)((char *)udp_hdr +
             sizeof(struct rte_udp_hdr));
-    eth_hdr = (struct rte_ether_hdr *)((char *)gtp_hdr +
+    // eth_hdr = (struct rte_ether_hdr *)((char *)gtp_hdr +
+    //         sizeof(struct rte_gtp_hdr));
+    ipv4_hdr = (struct rte_ipv4_hdr *)((char *)gtp_hdr + 
             sizeof(struct rte_gtp_hdr));
-    ipv4_hdr = (struct rte_ipv4_hdr *)((char *)udp_hdr + pkt->l2_len);
     tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 
     /*

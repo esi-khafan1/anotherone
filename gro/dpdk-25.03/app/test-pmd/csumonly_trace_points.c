@@ -9,6 +9,9 @@
 RTE_TRACE_POINT_REGISTER(net_trace,
         lib.net.trace)
 
+RTE_TRACE_POINT_REGISTER(net_trace_l4_len,
+        lib.gro_csum.trace.l4.len)
+
 // RTE_TRACE_POINT_REGISTER(rte_gro_trace_ctx_destroy,
 //         lib.gro_csum.gro.ctx.destroy)
 
