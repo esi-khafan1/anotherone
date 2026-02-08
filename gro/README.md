@@ -112,6 +112,8 @@ sudo dpdk-testpmd -l 0-3 -n4 --vdev 'eth_af_packet0,iface=veth-host1' --vdev 'et
 set fwd csum
 csum mac-swap off 0
 csum mac-swap off 1
+csum parse-tunnel on 0
+csum parse-tunnel on 1
 stop
 port stop 0
 port stop 1
@@ -132,6 +134,11 @@ sudo ip netns exec ns2 iperf3 -s -B 10.1.1.3
 On namespace ns1 run the client side
 ```shell
 sudo ip netns exec ns1 iperf3 -c 10.1.1.3 -t 0
+```
+
+GTP Replay
+```shell
+sudo ip netns exec ns1 tcpreplay -i veth-ns1 -l 10 ./Downloads/gtp_gro_test.pcap
 ```
 
 **Set Up an LTTng Trace Session**
