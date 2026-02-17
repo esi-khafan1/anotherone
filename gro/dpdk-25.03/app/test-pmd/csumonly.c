@@ -867,8 +867,12 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				if (gro_pkts_num > MAX_PKT_BURST - nb_rx)
 					gro_pkts_num = MAX_PKT_BURST - nb_rx;
 
+				// nb_rx += rte_gro_timeout_flush(gro_ctx, 0,
+				// 		RTE_GRO_TCP_IPV4,
+				// 		&pkts_burst[nb_rx],
+				// 		gro_pkts_num);
 				nb_rx += rte_gro_timeout_flush(gro_ctx, 0,
-						RTE_GRO_TCP_IPV4,
+						RTE_GRO_IPV4_GTP_TCP_IPV4,
 						&pkts_burst[nb_rx],
 						gro_pkts_num);
 				fs->gro_times = 0;

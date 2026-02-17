@@ -41,6 +41,12 @@ extern "C" {
 #define RTE_GRO_TCP_IPV6_INDEX 4
 #define RTE_GRO_TCP_IPV6 (1ULL << RTE_GRO_TCP_IPV6_INDEX)
 /**< TCP/IPv6 GRO flag. */
+#define RTE_GRO_IPV4_GTP_TCP_IPV4_INDEX 5
+#define RTE_GRO_IPV4_GTP_TCP_IPV4 (1ULL << RTE_GRO_IPV4_GTP_TCP_IPV4_INDEX)
+/**< GTP TCP/IPv4 GRO flag. */
+#define RTE_GRO_IPV4_GTP_UDP_IPV4_INDEX 6
+#define RTE_GRO_IPV4_GTP_UDP_IPV4 (1ULL << RTE_GRO_IPV4_GTP_UDP_IPV4_INDEX)
+/**< GTP UDP/IPv4 GRO flag. */
 
 /**
  * Structure used to create GRO context objects or used to pass

@@ -18,6 +18,8 @@
 #include <rte_vxlan.h>
 #include <rte_gtp.h>
 #include <rte_net.h>
+#include <net_trace.h>
+
 #include <rte_os_shim.h>
 
 /* get l3 packet type from ip6 next protocol */
@@ -193,6 +195,7 @@ ptype_tunnel_with_udp(uint16_t *proto, const struct rte_mbuf *m,
 		port_no = rte_be_to_cpu_16(uh->src_port);
 	else
 		port_no = rte_be_to_cpu_16(uh->dst_port);
+	rte_net_trace_port_number(port_no);
 	switch (port_no) {
 	case RTE_VXLAN_DEFAULT_PORT: {
 		*off += sizeof(struct rte_vxlan_hdr);
@@ -228,6 +231,7 @@ ptype_tunnel_with_udp(uint16_t *proto, const struct rte_mbuf *m,
 		 * Check message type. If message type is 0xff, it is
 		 * a GTP data packet. If not, it is a GTP control packet
 		 */
+		rte_net_trace_msg_type(gh->msg_type);
 		if (gh->msg_type == 0xff) {
 			ip_ver = *(const uint8_t *)((const char *)gh + gtp_len);
 			*proto = (ip_ver) & 0xf0;
@@ -472,6 +476,7 @@ l3:
 	/* same job for inner header: we need to duplicate the code
 	 * because the packet types do not have the same value.
 	 */
+	rte_net_trace_protocol(proto);
 	if ((layers & RTE_PTYPE_INNER_L2_MASK) == 0)
 		return pkt_type;
 
@@ -518,7 +523,8 @@ l3:
 		return pkt_type;
 
 	if (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4) ||
-		proto == RTE_VXLAN_GPE_TYPE_IPV4) {
+		proto == RTE_VXLAN_GPE_TYPE_IPV4 ||
+		proto == RTE_GTP_TYPE_IPV4) {
 		const struct rte_ipv4_hdr *ip4h;
 		struct rte_ipv4_hdr ip4h_copy;
 

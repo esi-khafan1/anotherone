@@ -6102,7 +6102,8 @@ setup_gro(const char *onoff, portid_t port_id)
 			return;
 		}
 		if (gro_flush_cycles == GRO_DEFAULT_FLUSH_CYCLES) {
-			gro_ports[port_id].param.gro_types = RTE_GRO_TCP_IPV4;
+			// gro_ports[port_id].param.gro_types = RTE_GRO_TCP_IPV4;
+			gro_ports[port_id].param.gro_types = RTE_GRO_IPV4_GTP_TCP_IPV4;
 			gro_ports[port_id].param.max_flow_num =
 				GRO_DEFAULT_FLOW_NUM;
 			gro_ports[port_id].param.max_item_per_flow =

@@ -12,8 +12,8 @@ RTE_TRACE_POINT_REGISTER(rte_gro_trace_macro_values_reassemble_burst,
 RTE_TRACE_POINT_REGISTER(rte_gro_trace_macro_values_reassemble,
         lib.gro_csum.gro.macro.values.reassemble)
 
-RTE_TRACE_POINT_REGISTER(rte_gro_trace_tcp4_reassemble_output,
-        lib.gro_csum.gro.tcp4.reassemble.output)
+RTE_TRACE_POINT_REGISTER(rte_gro_trace_gtp4_reassemble_output,
+        lib.gro_csum.gro.gtp4.reassemble.output)
 
 RTE_TRACE_POINT_REGISTER(rte_gro_trace_tcp4_reassemble_error_line,
         lib.gro_csum.gro.tcp4.reassemble.error.line)
@@ -47,3 +47,9 @@ RTE_TRACE_POINT_REGISTER(rte_gro_trace_destroy_start,
 
 RTE_TRACE_POINT_REGISTER(rte_gro_trace_destroy_end,
         lib.gro_csum.gro.destroy.end)
+
+RTE_TRACE_POINT_REGISTER(rte_gro_trace_types,
+        lib.gro_csum.gro.ctx.type)
+        
+RTE_TRACE_POINT_REGISTER(rte_gro_trace_do_gtp_tcp,
+        lib.gro_csum.gro.gtp.tcp.ok)
