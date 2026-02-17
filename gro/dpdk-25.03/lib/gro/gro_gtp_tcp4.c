@@ -318,11 +318,10 @@ gro_gtp_tcp4_reassemble(struct rte_mbuf *pkt,
             pkt->outer_l3_len);
     gtp_hdr = (struct rte_gtp_hdr *)((char *)udp_hdr +
             sizeof(struct rte_udp_hdr));
-    // eth_hdr = (struct rte_ether_hdr *)((char *)gtp_hdr +
-    //         sizeof(struct rte_gtp_hdr));
-    ipv4_hdr = (struct rte_ipv4_hdr *)((char *)gtp_hdr + 
+    eth_hdr = (struct rte_ether_hdr *)((char *)gtp_hdr +
             sizeof(struct rte_gtp_hdr));
-    tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
+	ipv4_hdr = (struct rte_ipv4_hdr *)((char *)udp_hdr + pkt->l2_len);
+	tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 
     /*
     * Don't process the packet which has FIN, SYN, RST, PSH, URG,
