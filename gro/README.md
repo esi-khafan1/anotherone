@@ -138,7 +138,7 @@ sudo ip netns exec ns1 iperf3 -c 10.1.1.3 -t 0
 
 GTP Replay
 ```shell
-sudo ip netns exec ns1 tcpreplay -i veth-ns1 -l 10 ./Downloads/gtp_gro_test.pcap
+sudo ip netns exec ns1 tcpreplay -i veth-ns1 -l 1000 --topspeed ./Downloads/gtp_gro_test.pcap
 ```
 
 **Set Up an LTTng Trace Session**
